@@ -2,6 +2,7 @@ import tkinter as tk
 import time
 from components.CustomLabel import CustomLabel
 from components.IconButton import IconButton
+import os
 
 class Timer:
     def __init__(self, parent, root, onTimerEnd):
@@ -21,7 +22,7 @@ class Timer:
         timerFrame = tk.Frame(frame, bg='#F8F9FA')
         timerFrame.pack(pady=24)
 
-        self.addBtn = IconButton(timerFrame, './assets/add.png', command=self.increaseTime)
+        self.addBtn = IconButton(timerFrame, os.path.abspath('chiller/assets/add.png'), command=self.increaseTime)
 
         timeFrame = tk.Frame(timerFrame, bg='#F8F9FA')
         self.timeLabel = CustomLabel(timeFrame, fontSize=24)
@@ -30,7 +31,7 @@ class Timer:
         self.minuteLabel.pack()
         self.formatTime()
 
-        self.minusBtn = IconButton(timerFrame, './assets/minimize.png', command=self.decreaseTime)
+        self.minusBtn = IconButton(timerFrame, os.path.abspath('chiller/assets/minimize.png'), command=self.decreaseTime)
 
         self.minusBtn.pack(side=tk.LEFT)
         timeFrame.pack(side=tk.LEFT, padx=48)

@@ -47,10 +47,10 @@ class DefrostConfig:
 
     def handleChange(self, isActive):
         if isActive:
-            GPIO.output(self.pin, 1)
+            GPIO.output(self.defrostPin, 1)
         else:
-            GPIO.output(self.pin, 0)
+            GPIO.output(self.defrostPin, 0)
 
     def updateZcValue(self, zcValue):
         self.zcTimeDiff = zcValue
-        self.zeroCrossValue.config(text=f"{round(zcValue,5)}")
+        self.zeroCrossValue.config(text=f"{zcValue:.3f}")

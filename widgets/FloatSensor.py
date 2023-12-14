@@ -1,14 +1,15 @@
 import tkinter as tk
 import RPi.GPIO as GPIO
 from components.CustomLabel import CustomLabel
+import os
 
 class FloatSensor:
     def __init__(self, parent, root, pin):
         self.parent = parent
         self.root = root
         self.pin = pin
-        self.goodIcon = tk.PhotoImage(file='./assets/check.png')
-        self.fullIcon = tk.PhotoImage(file='./assets/warning.png')
+        self.goodIcon = tk.PhotoImage(file=os.path.abspath('chiller/assets/check.png'))
+        self.fullIcon = tk.PhotoImage(file=os.path.abspath('chiller/assets/warning.png'))
         self.status = 'Good'
         self.timerId = None
 

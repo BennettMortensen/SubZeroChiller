@@ -2,7 +2,7 @@ import tkinter as tk
 from components.CustomLabel import CustomLabel
 import os
 
-TOTAL_FILE = '../total-mins.txt'
+TOTAL_FILE = os.path.abspath('total-mins.txt')
 
 class TotalTime:
     def __init__(self, parent, root):

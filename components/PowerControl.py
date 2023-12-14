@@ -2,18 +2,20 @@ import tkinter as tk
 from components.IconButton import IconButton
 
 class PowerControl(tk.Canvas):
-    def __init__(self, master, min=1, max=10, **kwargs):
+    def __init__(self, master, isConfig, min=1, max=10, **kwargs):
         super().__init__(master, bg='#F8F9FA', borderwidth=0, highlightthickness=0, **kwargs)
         self.controlCount = 10
         self.rectangles = []
 
-        canvas_width = (self.controlCount * 40) + 144
-        self.config(width=canvas_width, height=64)
+        self.controlWidth = 40
+        if isConfig:
+            self.controlWidth = 20
+        canvasWidth = (self.controlCount * self.controlWidth) + 144
+        self.config(width=canvasWidth, height=64)
 
         self.reset()
 
     def change_color_plus(self, level):
-        print('level', level)
         if level >= self.controlCount:
             return
         for i in range(level + 1):
@@ -28,7 +30,7 @@ class PowerControl(tk.Canvas):
     def reset(self):
         self.rectangles = []
         for i in range(self.controlCount):
-            rect = self.create_rectangle(0, 0, 39, 64, fill='#E9ECEF', outline='#F8F9FA')
+            rect = self.create_rectangle(0, 0, self.controlWidth - 1, 64, fill='#E9ECEF', outline='#F8F9FA')
             self.rectangles.append(rect)
-            x = i * 40
-            self.coords(rect, x, 0, x + 39, 64)
+            x = i * self.controlWidth
+            self.coords(rect, x, 0, x + (self.controlWidth - 1), 64)

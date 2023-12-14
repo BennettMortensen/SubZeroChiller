@@ -50,10 +50,10 @@ class ChamberTemp:
         tempC = sensor().get_temperature()
         self.tempValue = round(tempC,1)
         if self.isCelsius:
-            self.tempLabel.config(text=f"{self.tempValue}\u00b0C")
+            self.tempLabel.config(text=f"{self.tempValue:.2f}\u00b0C")
         else:
-            fValue = self.convertToFahrenheit()
-            self.tempLabel.config(text=f"{fValue}\u00b0F")
+            fValue = round(self.convertToFahrenheit(), 2)
+            self.tempLabel.config(text=f"{fValue:.2f}\u00b0F")
         self.timerId = self.root.after(5000, self.getTemp)
 
     def endTimer(self):

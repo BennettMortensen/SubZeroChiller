@@ -2,6 +2,8 @@ import tkinter as tk
 from tkinter import ttk
 import RPi.GPIO as GPIO
 import time
+import threading
+import os
 from components.CustomSwitch import CustomSwitch
 from components.Card import Card
 from components.IconButton import IconButton
@@ -18,13 +20,13 @@ from widgets.MainConfig import MainConfig
 from widgets.DefrostConfig import DefrostConfig
 
 TITLE = "Chiller"
-LOGO_PATH = "./assets/logo.png"
+LOGO_PATH = os.path.abspath("chiller/assets/logo.png")
 PIN_BLOWER = 24
 PIN_MAIN = 16
 PIN_DEFROST = 25
 PIN_FLOAT_SENSOR = 17
 PIN_ZEROCROSS = 23
-INIT_DELAY = 0.008
+RANGE_FILE = os.path.abspath('ranges.txt')
 
 class ChillerApp:
     def __init__(self, root):
@@ -32,15 +34,38 @@ class ChillerApp:
         self.holdTImer = None
         self.isConfig = False
         self.lowRange = 1
-        self.highRange = 10
-        self.delay = INIT_DELAY
+        self.highRange = 100
+        self.delay = None
         self.zcTimeDiff = 0
         self.lastZcTime = time.time()
+        self.mainTimer = None
+
+        if os.path.exists(RANGE_FILE):
+            with open(RANGE_FILE, 'r') as file:
+                content = file.read()
+                values = content.split('\n')
+                if len(values) == 2:
+                    self.lowRange = int(values[0])
+                    self.highRange = int(values[1])
+
+        self.delay = round(0.0088-(0.0008*self.lowRange),4)
 
         self.setupGpio()
         self.renderMain()
 
-        GPIO.add_event_detect(self.zcPin, GPIO.FALLING, callback=lambda channel: self.onZeroCross(channel, self.delay))
+        GPIO.add_event_detect(PIN_ZEROCROSS, GPIO.FALLING, callback=lambda channel: self.onZeroCross(channel, self.delay))
+
+    def runMain(self, run):
+        if (run):
+            # run for 30 mins
+            self.mainTimer = threading.Timer(30 * 60, lambda: self.runMain(False))
+            self.mainTimer.start()
+            GPIO.output(PIN_MAIN, 1)
+        else:
+            # off for 1 min
+            GPIO.output(PIN_MAIN, 0)
+            self.mainTimer = threading.Timer(60, lambda: self.runMain(True))
+            self.mainTimer.start()
 
     def setupGpio(self):
         GPIO.setmode(GPIO.BCM)
@@ -63,7 +88,8 @@ class ChillerApp:
             self.zcTimeDiff = time.time() - self.lastZcTime
             self.lastZcTime = time.time()
             if self.isConfig:
-                self.defrostConfig.updateZcValue(self.zcTimeDiff)
+                update_thread = threading.Thread(target=self.defrostConfig.updateZcValue, args=(self.zcTimeDiff,))
+                update_thread.start()
 
 
     def renderMain(self):
@@ -78,7 +104,7 @@ class ChillerApp:
         label = CustomLabel(header, text="Main Dashboard", fontSize=28)
         label.place(relx=0.5, rely=0.5, anchor="center")
 
-        button = IconButton(header, './assets/settings.png', small=True)
+        button = IconButton(header, os.path.abspath('chiller/assets/settings.png'), small=True)
         button.pack(side=tk.RIGHT, padx=24)
 
         button.bind("<ButtonPress-1>", self.configPress)
@@ -97,7 +123,7 @@ class ChillerApp:
         self.blower = Blower(card1, self.onBlowerChange, PIN_BLOWER)
 
         card2 = Card(main, row=1)
-        self.powerLevel = PowerLevel(card2, low=self.lowRange, high=self.highRange, delay=self.delay, onChange=self.onPowerChange)
+        self.powerLevel = PowerLevel(card2, rangeLow=self.lowRange, rangeHigh=self.highRange, delay=self.delay, onChange=self.onPowerChange, isConfig=False)
 
         card3 = Card(main, row=2)
         self.timer = Timer(card3, self.root, onTimerEnd=lambda: self.blower.toggleSwitch())
@@ -111,6 +137,9 @@ class ChillerApp:
         card6 = Card(main, row=2, column=1)
         self.floatSensor = FloatSensor(card6, self.root, PIN_FLOAT_SENSOR)
 
+        #initial run
+        self.runMain(True)
+
     def renderConfig(self):
         header = tk.Frame(self.root, bg="#F8F9FA")
         header.pack(side="top", fill="x", padx=4, pady=4)
@@ -123,7 +152,7 @@ class ChillerApp:
         label = CustomLabel(header, text="Configuration", fontSize=28)
         label.place(relx=0.5, rely=0.5, anchor="center")
 
-        button = IconButton(header, './assets/arrow_back.png', small=True, command=lambda: self.changeView('main'))
+        button = IconButton(header, os.path.abspath('chiller/assets/arrow_back.png'), small=True, command=lambda: self.changeView('main'))
         button.pack(side=tk.RIGHT, padx=24)
 
         mainFrame = tk.Frame(self.root)
@@ -137,11 +166,15 @@ class ChillerApp:
         main = tk.Frame(mainFrame, bg="#DEE2E6")
         main.grid(padx=16, pady=(12, 16), row=0, column=0, rowspan=2, sticky='nsew')
 
-        main.columnconfigure(0, weight=2)
+        main.rowconfigure(0, minsize=144)
+        main.rowconfigure(1, minsize=148)
+        main.rowconfigure(2, minsize=236)
+
+        main.columnconfigure(0, weight=1)
         main.columnconfigure(1, weight=1)
         main.rowconfigure(0, weight=1)
         main.rowconfigure(1, weight=1)
-        main.rowconfigure(2, weight=2)
+        main.rowconfigure(2, weight=1)
 
         mainConfigFrame = tk.Frame(mainFrame, bg="#DEE2E6")
         mainConfigFrame.grid(padx=(0, 16), pady=(12, 16), row=0, column=1, sticky='nsew')
@@ -157,7 +190,7 @@ class ChillerApp:
         self.blower = Blower(card1, self.onBlowerChange, PIN_BLOWER)
 
         card2 = Card(main, row=1)
-        self.powerLevel = PowerLevel(card2, low=self.lowRange, high=self.highRange, delay=self.delay, onChange=self.onPowerChange)
+        self.powerLevel = PowerLevel(card2, rangeLow=self.lowRange, rangeHigh=self.highRange, delay=self.delay, onChange=self.onPowerChange, isConfig=True)
 
         card3 = Card(main, row=2)
         self.powerRange = PowerRange(card3, low=self.lowRange, high=self.highRange, onRangeChange=self.onRangeChange)
@@ -171,6 +204,10 @@ class ChillerApp:
         card6 = Card(main, row=2, column=1)
         self.floatSensor = FloatSensor(card6, self.root, PIN_FLOAT_SENSOR)
 
+        # main now in manual mode, turn off and cancel auto timer
+        self.mainTimer.cancel()
+        GPIO.output(PIN_MAIN, 0)
+
     def changeView(self, view):
         self.floatSensor.endTimer()
         self.chamberTemp.endTimer()
@@ -183,16 +220,18 @@ class ChillerApp:
         else:
             self.renderMain()
             self.isConfig = False
+            with open(RANGE_FILE, 'w') as file:
+                file.write(str(f"{self.lowRange}\n{self.highRange}"))
 
     def configPress(self, event):
         self.holdTimer = self.root.after(5000, lambda: self.changeView('config'))
 
     def onBlowerChange(self, isActive):
         self.powerLevel.disableControls(not isActive)
+        if self.isConfig:
+            self.powerRange.disableControls(isActive)
         if (isActive):
-            if self.isConfig:
-                self.powerRange.disableControls(True)
-            else:
+            if not self.isConfig:
                 self.timer.startTimer()
             self.totalTime.startHourCount()
         else:
@@ -201,19 +240,30 @@ class ChillerApp:
             self.totalTime.endHourCount()
 
     def onRangeChange(self, low, high):
-        print(low, high)
         self.lowRange = low
         self.highRange = high
+        self.powerLevel.updateRangeValues(low, high)
 
     def onPowerChange(self, delay):
         self.delay = delay
 
+    def onClose(self):
+        print("closing app")
+        self.mainTimer.cancel()
+        GPIO.output(PIN_MAIN, 0)
+        self.root.destroy()
+
 def main():
+    if os.environ.get('DISPLAY','') == '':
+        os.system('Xvfb :0 -screen 0 1280x1720x16  &')
+        os.environ.__setitem__('DISPLAY', ':0.0')
     root = tk.Tk()
     root.title(TITLE)
     root.attributes("-fullscreen", True)
+    root.bind("<Escape>", lambda event: root.attributes("-fullscreen", False))
     root.configure(bg='#CED4DA', cursor="none")
-    ChillerApp(root)
+    app = ChillerApp(root)
+    root.protocol("WM_DELETE_WINDOW", lambda: app.onClose())
     root.mainloop()
 
 if __name__ == "__main__":
