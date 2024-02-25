@@ -12,6 +12,10 @@ git clone https://github.com/BennettMortensen/SubZeroChiller.git chiller
 #       with a file of the same name.
 sudo cp chiller/assets/splash.png /usr/share/plymouth/themes/pix/splash.png
 
+#startup python
+nano ~/.bashrc
+python3 /home/chiller1/chiller/chillerApp.py
+
 #w1thermsensor
 pip install w1thermsensor --break-system-packages
 sudo nano /boot/firmware/config.txt
